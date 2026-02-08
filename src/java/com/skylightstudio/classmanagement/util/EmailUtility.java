@@ -100,7 +100,7 @@ public class EmailUtility {
                 String emailText = "Dear " + name + ",\n\n"
                         + "Congratulations! Your instructor registration has been APPROVED by our admin team.\n\n"
                         + "You can now login to your account using your credentials at:\n"
-                        + "http://localhost:8080/SkylightStudioClassManagementSystem/general/login.jsp\n\n";
+                        + "https://skylight-studio.fly.dev/general/login.jsp\n\n";
 
                 if (message != null && !message.trim().isEmpty()) {
                     emailText += "Admin Message: " + message + "\n\n";
