@@ -143,7 +143,7 @@
             var endpoint = '';
 
             if (userRole === 'admin') {
-                endpoint = contextPath + '/admin/inbox-messages?action=count-unread';
+                endpoint = contextPath + '/admin/inboxMessages_admin?action=count-unread';
             } else if (userRole === 'instructor') {
                 endpoint = contextPath + '/instructor/inboxMessages_instructor?action=count-unread';
             }

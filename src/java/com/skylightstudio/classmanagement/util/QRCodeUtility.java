@@ -92,18 +92,17 @@ public class QRCodeUtility {
     }
 
     public static String generateQRContent(int classId, HttpServletRequest request) {
-        // Use environment variable APP_URL if available, otherwise build from request
         String appUrl = System.getenv("APP_URL");
 
         if (appUrl != null && !appUrl.isEmpty()) {
-            // Production: use APP_URL environment variable
-            return appUrl + "/feedback.jsp?classId=" + classId;
+            // Production: use APP_URL
+            return appUrl + "/general/feedback.jsp?classId=" + classId;
         } else {
             // Local development: build from request
             String baseUrl = request.getRequestURL().toString();
             String contextPath = request.getContextPath();
             String url = baseUrl.substring(0, baseUrl.indexOf(contextPath)) + contextPath;
-            return url + "/feedback.jsp?classId=" + classId;
+            return url + "/general/feedback.jsp?classId=" + classId;
         }
     }
 
