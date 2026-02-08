@@ -416,778 +416,778 @@
         <script src="../util/sidebar.js"></script>
 
         <script>
-        // Global variables
-        var notificationsData = [];
-        var filteredData = [];
-        var currentPage = 1;
-        var itemsPerPage = 10;
-        var currentFilter = 'all';
-        var currentStatusFilter = 'all';
-        var showArchived = false;
-        var currentNotificationId = null;
-        var currentNotificationType = null;
-        var currentNotification = null; // TAMBAH INI
+            // Global variables
+            var notificationsData = [];
+            var filteredData = [];
+            var currentPage = 1;
+            var itemsPerPage = 10;
+            var currentFilter = 'all';
+            var currentStatusFilter = 'all';
+            var showArchived = false;
+            var currentNotificationId = null;
+            var currentNotificationType = null;
+            var currentNotification = null; // TAMBAH INI
 
-        // DOM elements
-        var notificationsList = document.getElementById('notificationsList');
-        var noNotifications = document.getElementById('noNotifications');
-        var pagination = document.getElementById('pagination');
-        var pageNumbers = document.getElementById('pageNumbers');
-        var prevPageBtn = document.getElementById('prevPage');
-        var nextPageBtn = document.getElementById('nextPage');
-        var startRowSpan = document.getElementById('startRow');
-        var endRowSpan = document.getElementById('endRow');
-        var totalRowsSpan = document.getElementById('totalRows');
-        var refreshBtn = document.getElementById('refreshBtn');
-        var unreadBadge = document.getElementById('unreadBadge');
-        var unreadCountSpan = document.getElementById('unreadCount');
+            // DOM elements
+            var notificationsList = document.getElementById('notificationsList');
+            var noNotifications = document.getElementById('noNotifications');
+            var pagination = document.getElementById('pagination');
+            var pageNumbers = document.getElementById('pageNumbers');
+            var prevPageBtn = document.getElementById('prevPage');
+            var nextPageBtn = document.getElementById('nextPage');
+            var startRowSpan = document.getElementById('startRow');
+            var endRowSpan = document.getElementById('endRow');
+            var totalRowsSpan = document.getElementById('totalRows');
+            var refreshBtn = document.getElementById('refreshBtn');
+            var unreadBadge = document.getElementById('unreadBadge');
+            var unreadCountSpan = document.getElementById('unreadCount');
 
-        // Modal elements
-        var notificationModal = document.getElementById('notificationModal');
-        var modalIcon = document.getElementById('modalIcon');
-        var modalTitle = document.getElementById('modalTitle');
-        var modalSubtitle = document.getElementById('modalSubtitle');
-        var modalContent = document.getElementById('modalContent');
-        var modalDate = document.getElementById('modalDate');
-        var closeModal = document.getElementById('closeModal');
-        var markAsReadBtn = document.getElementById('markAsReadBtn');
-        var archiveBtn = document.getElementById('archiveBtn');
+            // Modal elements
+            var notificationModal = document.getElementById('notificationModal');
+            var modalIcon = document.getElementById('modalIcon');
+            var modalTitle = document.getElementById('modalTitle');
+            var modalSubtitle = document.getElementById('modalSubtitle');
+            var modalContent = document.getElementById('modalContent');
+            var modalDate = document.getElementById('modalDate');
+            var closeModal = document.getElementById('closeModal');
+            var markAsReadBtn = document.getElementById('markAsReadBtn');
+            var archiveBtn = document.getElementById('archiveBtn');
 
-        // Filter elements
-        var filterAll = document.getElementById('filterAll');
-        var filterRegister = document.getElementById('filterRegister');
-        var filterCancel = document.getElementById('filterCancel');
-        var filterAllStatus = document.getElementById('filterAllStatus');
-        var filterUnread = document.getElementById('filterUnread');
-        var filterRead = document.getElementById('filterRead');
-        var showActive = document.getElementById('showActive');
-        var showArchivedBtn = document.getElementById('showArchived');
+            // Filter elements
+            var filterAll = document.getElementById('filterAll');
+            var filterRegister = document.getElementById('filterRegister');
+            var filterCancel = document.getElementById('filterCancel');
+            var filterAllStatus = document.getElementById('filterAllStatus');
+            var filterUnread = document.getElementById('filterUnread');
+            var filterRead = document.getElementById('filterRead');
+            var showActive = document.getElementById('showActive');
+            var showArchivedBtn = document.getElementById('showArchived');
 
-        function init() {
-            loadNotifications();
-            setupEventListeners();
-            setupModalListeners();
-            setupFilterListeners();
-        }
-
-        function setupEventListeners() {
-            refreshBtn.addEventListener('click', function () {
+            function init() {
                 loadNotifications();
-            });
-
-            prevPageBtn.addEventListener('click', function () {
-                if (currentPage > 1) {
-                    currentPage--;
-                    loadNotifications(); // PERUBAHAN: Gunakan loadNotifications bukan renderNotifications
-                }
-            });
-
-            nextPageBtn.addEventListener('click', function () {
-                var totalPages = Math.ceil(filteredData.length / itemsPerPage);
-                if (currentPage < totalPages) {
-                    currentPage++;
-                    loadNotifications(); // PERUBAHAN: Gunakan loadNotifications
-                }
-            });
-        }
-
-        function setupModalListeners() {
-            closeModal.addEventListener('click', function () {
-                notificationModal.classList.add('hidden');
-            });
-
-            // PERUBAHAN: Update event listeners untuk markAsReadBtn
-            markAsReadBtn.addEventListener('click', function () {
-                if (currentNotificationId && currentNotificationType && currentNotification) {
-                    if (currentNotification.isRead) {
-                        console.log('Marking as UNREAD:', currentNotificationId, currentNotificationType);
-                        markAsUnread(currentNotificationId, currentNotificationType);
-                    } else {
-                        console.log('Marking as READ:', currentNotificationId, currentNotificationType);
-                        markAsRead(currentNotificationId, currentNotificationType);
-                    }
-                } else {
-                    console.error('No notification selected or currentNotification not set');
-                }
-            });
-
-            // PERUBAHAN: Update event listeners untuk archiveBtn
-            archiveBtn.addEventListener('click', function () {
-                if (currentNotificationId && currentNotificationType && currentNotification) {
-                    var currentlyArchived = currentNotification.archived || false;
-                    console.log('Archive status:', currentlyArchived);
-                    if (currentlyArchived) {
-                        console.log('UNARCHIVING:', currentNotificationId, currentNotificationType);
-                        toggleArchive(currentNotificationId, currentNotificationType, true);
-                    } else {
-                        console.log('ARCHIVING:', currentNotificationId, currentNotificationType);
-                        toggleArchive(currentNotificationId, currentNotificationType, false);
-                    }
-                } else {
-                    console.error('No notification selected or currentNotification not set');
-                }
-            });
-
-            // Close modal when clicking on backdrop
-            notificationModal.addEventListener('click', function (e) {
-                if (e.target.classList.contains('modal-backdrop')) {
-                    notificationModal.classList.add('hidden');
-                }
-            });
-        }
-
-        function setupFilterListeners() {
-            // Type filters
-            filterAll.addEventListener('click', function () {
-                currentFilter = 'all';
-                updateActiveFilterButtons();
-                applyFilters();
-            });
-
-            filterRegister.addEventListener('click', function () {
-                currentFilter = 'register';
-                updateActiveFilterButtons();
-                applyFilters();
-            });
-
-            filterCancel.addEventListener('click', function () {
-                currentFilter = 'cancel';
-                updateActiveFilterButtons();
-                applyFilters();
-            });
-
-            // Status filters
-            filterAllStatus.addEventListener('click', function () {
-                currentStatusFilter = 'all';
-                updateActiveStatusFilterButtons();
-                applyFilters();
-            });
-
-            filterUnread.addEventListener('click', function () {
-                currentStatusFilter = 'unread';
-                updateActiveStatusFilterButtons();
-                applyFilters();
-            });
-
-            filterRead.addEventListener('click', function () {
-                currentStatusFilter = 'read';
-                updateActiveStatusFilterButtons();
-                applyFilters();
-            });
-
-            // Archive toggle
-            showActive.addEventListener('click', function () {
-                showArchived = false;
-                updateArchiveButtons();
-                applyFilters();
-            });
-
-            showArchivedBtn.addEventListener('click', function () {
-                showArchived = true;
-                updateArchiveButtons();
-                applyFilters();
-            });
-        }
-
-        function updateActiveFilterButtons() {
-            var buttons = document.querySelectorAll('.filter-btn');
-            for (var i = 0; i < buttons.length; i++) {
-                buttons[i].classList.remove('filter-active');
+                setupEventListeners();
+                setupModalListeners();
+                setupFilterListeners();
             }
 
-            if (currentFilter === 'all') {
-                filterAll.classList.add('filter-active');
-            } else if (currentFilter === 'register') {
-                filterRegister.classList.add('filter-active');
-            } else if (currentFilter === 'cancel') {
-                filterCancel.classList.add('filter-active');
-            }
-        }
-
-        function updateActiveStatusFilterButtons() {
-            var buttons = document.querySelectorAll('.status-filter-btn');
-            for (var i = 0; i < buttons.length; i++) {
-                buttons[i].classList.remove('filter-active');
-            }
-
-            if (currentStatusFilter === 'all') {
-                filterAllStatus.classList.add('filter-active');
-            } else if (currentStatusFilter === 'unread') {
-                filterUnread.classList.add('filter-active');
-            } else if (currentStatusFilter === 'read') {
-                filterRead.classList.add('filter-active');
-            }
-        }
-
-        function updateArchiveButtons() {
-            if (showArchived) {
-                showActive.classList.remove('active');
-                showArchivedBtn.classList.add('active');
-            } else {
-                showActive.classList.add('active');
-                showArchivedBtn.classList.remove('active');
-            }
-        }
-
-        function loadNotifications() {
-            var url = '../admin/inbox-messages?action=list&type=' + currentFilter + 
-                     '&readStatus=' + currentStatusFilter + 
-                     '&showArchived=' + (showArchived ? 'true' : 'false') +
-                     '&page=' + currentPage + 
-                     '&limit=' + itemsPerPage;
-
-            console.log('Loading from URL:', url);
-
-            fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json'
-                }
-            })
-            .then(function(response) {
-                if (!response.ok) {
-                    throw new Error('HTTP error! Status: ' + response.status);
-                }
-                return response.text();
-            })
-            .then(function(text) {
-                console.log('Response text:', text.substring(0, 200)); // Debug log
-                try {
-                    var data = JSON.parse(text);
-
-                    if (data.error) {
-                        console.error('Error from server:', data.error);
-                        showErrorMessage('Server error: ' + data.error);
-                        return;
-                    }
-
-                    notificationsData = data.notifications || [];
-                    filteredData = notificationsData.slice();
-
-                    console.log('Loaded ' + notificationsData.length + ' notifications');
-                    if (notificationsData.length > 0) {
-                        console.log('First notification:', notificationsData[0]);
-                    }
-
-                    renderNotifications();
-                    updatePaginationInfo(data.totalCount || 0, data.totalPages || 1);
-
-                    updateUnreadCount();
-
-                } catch (e) {
-                    console.error('JSON parse error:', e);
-                    showErrorMessage('Invalid response from server');
-                }
-            })
-            .catch(function(error) {
-                console.error('Fetch error:', error);
-                showErrorMessage('Failed to load notifications: ' + error.message);
-            });
-        }
-
-        function updateUnreadCount() {
-            var url = '../admin/inbox-messages?action=count-unread';
-
-            fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json'
-                }
-            })
-            .then(function(response) {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.text();
-            })
-            .then(function(text) {
-                console.log('Unread count response:', text);
-                try {
-                    var data = JSON.parse(text);
-                    if (data.error) {
-                        console.error('Error loading unread count:', data.error);
-                        return;
-                    }
-
-                    var unreadCount = data.unreadCount || 0;
-
-                    if (unreadCount > 0) {
-                        unreadCountSpan.textContent = unreadCount;
-                        unreadBadge.classList.remove('hidden');
-                    } else {
-                        unreadBadge.classList.add('hidden');
-                    }
-                } catch (e) {
-                    console.error('JSON parse error for unread count:', e);
-                }
-            })
-            .catch(function(error) {
-                console.error('Error:', error);
-            });
-        }
-
-        function applyFilters() {
-            currentPage = 1;
-            loadNotifications();
-        }
-
-        // PERUBAHAN: Function markAsRead yang lebih robust
-        function markAsRead(notificationId, type) {
-            console.log('markAsRead called with:', notificationId, type);
-
-            var formData = new FormData();
-            formData.append('action', 'mark-read');
-            formData.append('id', notificationId);
-            formData.append('type', type);
-
-            fetch('../admin/inbox-messages', {
-                method: 'POST',
-                body: new URLSearchParams(formData)
-            })
-            .then(function(response) {
-                console.log('Response status:', response.status);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok: ' + response.status);
-                }
-                return response.text();
-            })
-            .then(function(text) {
-                console.log('Response text:', text);
-                try {
-                    var data = JSON.parse(text);
-                    console.log('Parsed response:', data);
-
-                    if (data.success) {
-                        console.log('Successfully marked as read');
-                        notificationModal.classList.add('hidden');
-                        loadNotifications(); // Reload untuk update status
-                    } else {
-                        alert('Failed: ' + (data.message || data.error || 'Unknown error'));
-                    }
-                } catch (e) {
-                    console.error('JSON parse error:', e);
-                    alert('Invalid response from server');
-                }
-            })
-            .catch(function(error) {
-                console.error('Error:', error);
-                alert('Failed to mark as read. Please try again.');
-            });
-        }
-
-        // TAMBAH: Function markAsUnread
-        function markAsUnread(notificationId, type) {
-            console.log('markAsUnread called with:', notificationId, type);
-
-            var formData = new FormData();
-            formData.append('action', 'mark-unread');
-            formData.append('id', notificationId);
-            formData.append('type', type);
-
-            fetch('../admin/inbox-messages', {
-                method: 'POST',
-                body: new URLSearchParams(formData)
-            })
-            .then(function(response) {
-                console.log('Response status:', response.status);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok: ' + response.status);
-                }
-                return response.text();
-            })
-            .then(function(text) {
-                console.log('Response text:', text);
-                try {
-                    var data = JSON.parse(text);
-                    console.log('Parsed response:', data);
-
-                    if (data.success) {
-                        console.log('Successfully marked as unread');
-                        notificationModal.classList.add('hidden');
-                        loadNotifications(); // Reload untuk update status
-                    } else {
-                        alert('Failed: ' + (data.message || data.error || 'Unknown error'));
-                    }
-                } catch (e) {
-                    console.error('JSON parse error:', e);
-                    alert('Invalid response from server');
-                }
-            })
-            .catch(function(error) {
-                console.error('Error:', error);
-                alert('Failed to mark as unread. Please try again.');
-            });
-        }
-
-        // PERUBAHAN: Function toggleArchive yang lebih jelas
-        function toggleArchive(notificationId, type, currentlyArchived) {
-            console.log('toggleArchive called with:', notificationId, type, 'currentlyArchived:', currentlyArchived);
-
-            var action = currentlyArchived ? 'unarchive' : 'archive';
-            var formData = new FormData();
-            formData.append('action', action);
-            formData.append('id', notificationId);
-            formData.append('type', type);
-
-            fetch('../admin/inbox-messages', {
-                method: 'POST',
-                body: new URLSearchParams(formData)
-            })
-            .then(function(response) {
-                console.log('Response status:', response.status);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok: ' + response.status);
-                }
-                return response.text();
-            })
-            .then(function(text) {
-                console.log('Response text:', text);
-                try {
-                    var data = JSON.parse(text);
-                    console.log('Parsed response:', data);
-
-                    if (data.success) {
-                        console.log('Successfully ' + action + 'd');
-                        notificationModal.classList.add('hidden');
-                        loadNotifications(); // Reload untuk update status
-                    } else {
-                        alert('Failed: ' + (data.message || data.error || 'Unknown error'));
-                    }
-                } catch (e) {
-                    console.error('JSON parse error:', e);
-                    alert('Invalid response from server');
-                }
-            })
-            .catch(function(error) {
-                console.error('Error:', error);
-                alert('Failed to ' + action + '. Please try again.');
-            });
-        }
-
-        // PERUBAHAN: Update openNotificationModal untuk simpan currentNotification
-        function openNotificationModal(notificationId, type) {
-            console.log('openNotificationModal called with:', notificationId, type);
-
-            var url = '../admin/inbox-messages?action=detail&id=' + notificationId + '&type=' + type;
-
-            fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json'
-                }
-            })
-            .then(function(response) {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.text();
-            })
-            .then(function(text) {
-                console.log('Detail response:', text);
-
-                try {
-                    var notification = JSON.parse(text);
-
-                    if (notification.error) {
-                        console.error('Error loading notification details:', notification.error);
-                        showErrorMessage('Failed to load notification details');
-                        return;
-                    }
-
-                    // Save current notification data
-                    currentNotificationId = notificationId;
-                    currentNotificationType = type;
-                    currentNotification = notification; // Simpan object notification lengkap
-
-                    console.log('Current notification saved:', currentNotification);
-
-                    // Set modal icon
-                    modalIcon.className = 'notification-type-icon mr-3';
-                    if (type === 'register') {
-                        modalIcon.classList.add('notification-type-register');
-                        modalIcon.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>';
-                    } else {
-                        modalIcon.classList.add('notification-type-cancel');
-                        modalIcon.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
-                    }
-
-                    // Set modal title and subtitle
-                    modalTitle.textContent = notification.title || 'Notification Details';
-                    modalSubtitle.textContent = notification.displayDate || '';
-
-                    // Set modal content based on type
-                    var contentHtml = '';
-                    if (type === 'register') {
-                        contentHtml = '<div>' +
-                                '<div class="flex items-start mb-4">' +
-                                '<img src="../profile_pictures/instructor/dummy.png" alt="Instructor" class="w-16 h-16 rounded-full object-cover border-2 border-blush mr-4">' +
-                                '<div>' +
-                                '<h4 class="font-medium text-espresso">' + (notification.instructorName || 'Unknown') + '</h4>' +
-                                '<p class="text-sm text-espressoLighter">' + (notification.instructorEmail || 'No email') + '</p>' +
-                                '<div class="mt-2 status-chip ' + getStatusClass(notification.status) + '">' +
-                                (notification.status || 'unknown') +
-                                '</div>' +
-                                '</div>' +
-                                '</div>' +
-                                '<div class="space-y-3 text-sm">' +
-                                '<div><span class="font-medium text-espressoLight">Phone:</span> ' + (notification.instructorPhone || 'Not provided') + '</div>' +
-                                '<div><span class="font-medium text-espressoLight">NRIC:</span> ' + (notification.instructorNric || 'Not provided') + '</div>' +
-                                '<div><span class="font-medium text-espressoLight">Registration Date:</span> ' + (notification.registerDate || 'Unknown') + '</div>' +
-                                (notification.yearOfExperience ? '<div><span class="font-medium text-espressoLight">Experience:</span> ' + notification.yearOfExperience + ' years</div>' : '') +
-                                (notification.address ? '<div><span class="font-medium text-espressoLight">Address:</span> ' + notification.address + '</div>' : '') +
-                                '</div>' +
-                                '<div class="mt-6 pt-4 border-t border-borderGray">' +
-                                '<p class="text-sm text-espresso">This is a notification about a new instructor registration. Please review the instructor\'s details and take appropriate action in the instructor management section.</p>' +
-                                '</div>' +
-                                '</div>';
-                    } else {
-                        contentHtml = '<div>' +
-                                '<div class="mb-4">' +
-                                '<h4 class="font-medium text-espresso mb-2">' + (notification.className || 'Unknown Class') + '</h4>' +
-                                '<div class="flex items-center space-x-4 text-sm">' +
-                                '<div><span class="font-medium text-espressoLight">Instructor:</span> ' + (notification.instructorName || 'Unknown') + '</div>' +
-                                '<div class="status-chip status-pending">' + (notification.status || 'pending') + '</div>' +
-                                '</div>' +
-                                '</div>' +
-                                '<div class="space-y-3 text-sm mb-4">' +
-                                (notification.classType ? '<div><span class="font-medium text-espressoLight">Class Type:</span> ' + notification.classType + '</div>' : '') +
-                                (notification.classLevel ? '<div><span class="font-medium text-espressoLight">Level:</span> ' + notification.classLevel + '</div>' : '') +
-                                (notification.classDate ? '<div><span class="font-medium text-espressoLight">Date:</span> ' + notification.classDate + '</div>' : '') +
-                                (notification.classTime ? '<div><span class="font-medium text-espressoLight">Time:</span> ' + notification.classTime + '</div>' : '') +
-                                '</div>' +
-                                '<div class="mt-4 pt-4 border-t border-borderGray">' +
-                                '<h5 class="font-medium text-espresso mb-2">Cancellation Reason:</h5>' +
-                                '<div class="bg-softGray p-4 rounded-lg">' +
-                                '<p class="text-sm text-espressoLighter">' + (notification.cancellationReason || 'No reason provided') + '</p>' +
-                                '</div>' +
-                                '<p class="text-sm text-espresso mt-4">This is a notification about a class cancellation. Please check the class schedule and make necessary arrangements in the class management section.</p>' +
-                                '</div>' +
-                                '</div>';
-                    }
-
-                    modalContent.innerHTML = contentHtml;
-                    modalDate.textContent = 'Received ' + (notification.displayDate || '');
-
-                    // PERUBAHAN: Update button text berdasarkan status
-                    console.log('Notification isRead:', notification.isRead);
-                    console.log('Notification archived:', notification.archived);
-
-                    if (notification.isRead) {
-                        markAsReadBtn.textContent = 'Mark as Unread';
-                        markAsReadBtn.classList.remove('action-btn-mark');
-                        markAsReadBtn.classList.add('action-btn-read');
-                    } else {
-                        markAsReadBtn.textContent = 'Mark as Read';
-                        markAsReadBtn.classList.remove('action-btn-read');
-                        markAsReadBtn.classList.add('action-btn-mark');
-                    }
-
-                    if (notification.archived) {
-                        archiveBtn.textContent = 'Unarchive';
-                    } else {
-                        archiveBtn.textContent = 'Archive';
-                    }
-
-                    // Show modal
-                    notificationModal.classList.remove('hidden');
-
-                } catch (e) {
-                    console.error('JSON parse error:', e);
-                    showErrorMessage('Failed to load notification details');
-                }
-            })
-            .catch(function(error) {
-                console.error('Error:', error);
-                showErrorMessage('Failed to load notification details');
-            });
-        }
-
-        function getStatusClass(status) {
-            if (status === 'pending') {
-                return 'status-pending';
-            } else if (status === 'approved') {
-                return 'status-approved';
-            } else if (status === 'rejected') {
-                return 'status-rejected';
-            } else {
-                return 'status-pending';
-            }
-        }
-
-        function renderNotifications() {
-            notificationsList.innerHTML = '';
-
-            if (filteredData.length === 0) {
-                noNotifications.classList.remove('hidden');
-                notificationsList.classList.add('hidden');
-                pagination.classList.add('hidden');
-                return;
-            }
-
-            noNotifications.classList.add('hidden');
-            notificationsList.classList.remove('hidden');
-            pagination.classList.remove('hidden');
-
-            for (var i = 0; i < filteredData.length; i++) {
-                var notification = filteredData[i];
-                var item = document.createElement('div');
-
-                var itemClass = 'notification-item p-4 ' + (!notification.isRead ? 'unread' : '');
-                item.className = itemClass;
-                item.setAttribute('data-id', notification.id);
-                item.setAttribute('data-type', notification.type);
-
-                item.addEventListener('click', function (e) {
-                    var id = this.getAttribute('data-id');
-                    var type = this.getAttribute('data-type');
-                    openNotificationModal(id, type);
+            function setupEventListeners() {
+                refreshBtn.addEventListener('click', function () {
+                    loadNotifications();
                 });
 
-                // Icon based on type
-                var icon = '';
-                if (notification.type === 'register') {
-                    icon = '<div class="notification-type-icon notification-type-register">' +
-                            '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
-                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>' +
-                            '</svg></div>';
-                } else {
-                    icon = '<div class="notification-type-icon notification-type-cancel">' +
-                            '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
-                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>' +
-                            '</svg></div>';
+                prevPageBtn.addEventListener('click', function () {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        loadNotifications(); // PERUBAHAN: Gunakan loadNotifications bukan renderNotifications
+                    }
+                });
+
+                nextPageBtn.addEventListener('click', function () {
+                    var totalPages = Math.ceil(filteredData.length / itemsPerPage);
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        loadNotifications(); // PERUBAHAN: Gunakan loadNotifications
+                    }
+                });
+            }
+
+            function setupModalListeners() {
+                closeModal.addEventListener('click', function () {
+                    notificationModal.classList.add('hidden');
+                });
+
+                // PERUBAHAN: Update event listeners untuk markAsReadBtn
+                markAsReadBtn.addEventListener('click', function () {
+                    if (currentNotificationId && currentNotificationType && currentNotification) {
+                        if (currentNotification.isRead) {
+                            console.log('Marking as UNREAD:', currentNotificationId, currentNotificationType);
+                            markAsUnread(currentNotificationId, currentNotificationType);
+                        } else {
+                            console.log('Marking as READ:', currentNotificationId, currentNotificationType);
+                            markAsRead(currentNotificationId, currentNotificationType);
+                        }
+                    } else {
+                        console.error('No notification selected or currentNotification not set');
+                    }
+                });
+
+                // PERUBAHAN: Update event listeners untuk archiveBtn
+                archiveBtn.addEventListener('click', function () {
+                    if (currentNotificationId && currentNotificationType && currentNotification) {
+                        var currentlyArchived = currentNotification.archived || false;
+                        console.log('Archive status:', currentlyArchived);
+                        if (currentlyArchived) {
+                            console.log('UNARCHIVING:', currentNotificationId, currentNotificationType);
+                            toggleArchive(currentNotificationId, currentNotificationType, true);
+                        } else {
+                            console.log('ARCHIVING:', currentNotificationId, currentNotificationType);
+                            toggleArchive(currentNotificationId, currentNotificationType, false);
+                        }
+                    } else {
+                        console.error('No notification selected or currentNotification not set');
+                    }
+                });
+
+                // Close modal when clicking on backdrop
+                notificationModal.addEventListener('click', function (e) {
+                    if (e.target.classList.contains('modal-backdrop')) {
+                        notificationModal.classList.add('hidden');
+                    }
+                });
+            }
+
+            function setupFilterListeners() {
+                // Type filters
+                filterAll.addEventListener('click', function () {
+                    currentFilter = 'all';
+                    updateActiveFilterButtons();
+                    applyFilters();
+                });
+
+                filterRegister.addEventListener('click', function () {
+                    currentFilter = 'register';
+                    updateActiveFilterButtons();
+                    applyFilters();
+                });
+
+                filterCancel.addEventListener('click', function () {
+                    currentFilter = 'cancel';
+                    updateActiveFilterButtons();
+                    applyFilters();
+                });
+
+                // Status filters
+                filterAllStatus.addEventListener('click', function () {
+                    currentStatusFilter = 'all';
+                    updateActiveStatusFilterButtons();
+                    applyFilters();
+                });
+
+                filterUnread.addEventListener('click', function () {
+                    currentStatusFilter = 'unread';
+                    updateActiveStatusFilterButtons();
+                    applyFilters();
+                });
+
+                filterRead.addEventListener('click', function () {
+                    currentStatusFilter = 'read';
+                    updateActiveStatusFilterButtons();
+                    applyFilters();
+                });
+
+                // Archive toggle
+                showActive.addEventListener('click', function () {
+                    showArchived = false;
+                    updateArchiveButtons();
+                    applyFilters();
+                });
+
+                showArchivedBtn.addEventListener('click', function () {
+                    showArchived = true;
+                    updateArchiveButtons();
+                    applyFilters();
+                });
+            }
+
+            function updateActiveFilterButtons() {
+                var buttons = document.querySelectorAll('.filter-btn');
+                for (var i = 0; i < buttons.length; i++) {
+                    buttons[i].classList.remove('filter-active');
                 }
 
-                // Type tag
-                var typeTag = '';
-                if (notification.type === 'register') {
-                    typeTag = '<span class="notification-tag tag-register ml-2">Instructor Registration</span>';
-                } else {
-                    typeTag = '<span class="notification-tag tag-cancel ml-2">Instructor Class Cancellation Alert</span>';
+                if (currentFilter === 'all') {
+                    filterAll.classList.add('filter-active');
+                } else if (currentFilter === 'register') {
+                    filterRegister.classList.add('filter-active');
+                } else if (currentFilter === 'cancel') {
+                    filterCancel.classList.add('filter-active');
+                }
+            }
+
+            function updateActiveStatusFilterButtons() {
+                var buttons = document.querySelectorAll('.status-filter-btn');
+                for (var i = 0; i < buttons.length; i++) {
+                    buttons[i].classList.remove('filter-active');
                 }
 
-                // Status chip
-                var statusChip = '';
-                var statusClass = getStatusClass(notification.status);
-                statusChip = '<span class="' + statusClass + '">' + notification.status + '</span>';
+                if (currentStatusFilter === 'all') {
+                    filterAllStatus.classList.add('filter-active');
+                } else if (currentStatusFilter === 'unread') {
+                    filterUnread.classList.add('filter-active');
+                } else if (currentStatusFilter === 'read') {
+                    filterRead.classList.add('filter-active');
+                }
+            }
 
-                // Content based on type
-                var content = '';
-                if (notification.type === 'register') {
-                    content =
+            function updateArchiveButtons() {
+                if (showArchived) {
+                    showActive.classList.remove('active');
+                    showArchivedBtn.classList.add('active');
+                } else {
+                    showActive.classList.add('active');
+                    showArchivedBtn.classList.remove('active');
+                }
+            }
+
+            function loadNotifications() {
+                var url = '../admin/inbox-messages?action=list&type=' + currentFilter +
+                        '&readStatus=' + currentStatusFilter +
+                        '&showArchived=' + (showArchived ? 'true' : 'false') +
+                        '&page=' + currentPage +
+                        '&limit=' + itemsPerPage;
+
+                console.log('Loading from URL:', url);
+
+                fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                })
+                        .then(function (response) {
+                            if (!response.ok) {
+                                throw new Error('HTTP error! Status: ' + response.status);
+                            }
+                            return response.text();
+                        })
+                        .then(function (text) {
+                            console.log('Response text:', text.substring(0, 200)); // Debug log
+                            try {
+                                var data = JSON.parse(text);
+
+                                if (data.error) {
+                                    console.error('Error from server:', data.error);
+                                    showErrorMessage('Server error: ' + data.error);
+                                    return;
+                                }
+
+                                notificationsData = data.notifications || [];
+                                filteredData = notificationsData.slice();
+
+                                console.log('Loaded ' + notificationsData.length + ' notifications');
+                                if (notificationsData.length > 0) {
+                                    console.log('First notification:', notificationsData[0]);
+                                }
+
+                                renderNotifications();
+                                updatePaginationInfo(data.totalCount || 0, data.totalPages || 1);
+
+                                updateUnreadCount();
+
+                            } catch (e) {
+                                console.error('JSON parse error:', e);
+                                showErrorMessage('Invalid response from server');
+                            }
+                        })
+                        .catch(function (error) {
+                            console.error('Fetch error:', error);
+                            showErrorMessage('Failed to load notifications: ' + error.message);
+                        });
+            }
+
+            function updateUnreadCount() {
+                var url = '../admin/inbox-messages?action=count-unread';
+
+                fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                })
+                        .then(function (response) {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.text();
+                        })
+                        .then(function (text) {
+                            console.log('Unread count response:', text);
+                            try {
+                                var data = JSON.parse(text);
+                                if (data.error) {
+                                    console.error('Error loading unread count:', data.error);
+                                    return;
+                                }
+
+                                var unreadCount = data.unreadCount || 0;
+
+                                if (unreadCount > 0) {
+                                    unreadCountSpan.textContent = unreadCount;
+                                    unreadBadge.classList.remove('hidden');
+                                } else {
+                                    unreadBadge.classList.add('hidden');
+                                }
+                            } catch (e) {
+                                console.error('JSON parse error for unread count:', e);
+                            }
+                        })
+                        .catch(function (error) {
+                            console.error('Error:', error);
+                        });
+            }
+
+            function applyFilters() {
+                currentPage = 1;
+                loadNotifications();
+            }
+
+            // PERUBAHAN: Function markAsRead yang lebih robust
+            function markAsRead(notificationId, type) {
+                console.log('markAsRead called with:', notificationId, type);
+
+                var formData = new FormData();
+                formData.append('action', 'mark-read');
+                formData.append('id', notificationId);
+                formData.append('type', type);
+
+                fetch('../admin/inbox-messages', {
+                    method: 'POST',
+                    body: new URLSearchParams(formData)
+                })
+                        .then(function (response) {
+                            console.log('Response status:', response.status);
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok: ' + response.status);
+                            }
+                            return response.text();
+                        })
+                        .then(function (text) {
+                            console.log('Response text:', text);
+                            try {
+                                var data = JSON.parse(text);
+                                console.log('Parsed response:', data);
+
+                                if (data.success) {
+                                    console.log('Successfully marked as read');
+                                    notificationModal.classList.add('hidden');
+                                    loadNotifications(); // Reload untuk update status
+                                } else {
+                                    alert('Failed: ' + (data.message || data.error || 'Unknown error'));
+                                }
+                            } catch (e) {
+                                console.error('JSON parse error:', e);
+                                alert('Invalid response from server');
+                            }
+                        })
+                        .catch(function (error) {
+                            console.error('Error:', error);
+                            alert('Failed to mark as read. Please try again.');
+                        });
+            }
+
+            // TAMBAH: Function markAsUnread
+            function markAsUnread(notificationId, type) {
+                console.log('markAsUnread called with:', notificationId, type);
+
+                var formData = new FormData();
+                formData.append('action', 'mark-unread');
+                formData.append('id', notificationId);
+                formData.append('type', type);
+
+                fetch('../admin/inbox-messages', {
+                    method: 'POST',
+                    body: new URLSearchParams(formData)
+                })
+                        .then(function (response) {
+                            console.log('Response status:', response.status);
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok: ' + response.status);
+                            }
+                            return response.text();
+                        })
+                        .then(function (text) {
+                            console.log('Response text:', text);
+                            try {
+                                var data = JSON.parse(text);
+                                console.log('Parsed response:', data);
+
+                                if (data.success) {
+                                    console.log('Successfully marked as unread');
+                                    notificationModal.classList.add('hidden');
+                                    loadNotifications(); // Reload untuk update status
+                                } else {
+                                    alert('Failed: ' + (data.message || data.error || 'Unknown error'));
+                                }
+                            } catch (e) {
+                                console.error('JSON parse error:', e);
+                                alert('Invalid response from server');
+                            }
+                        })
+                        .catch(function (error) {
+                            console.error('Error:', error);
+                            alert('Failed to mark as unread. Please try again.');
+                        });
+            }
+
+            // PERUBAHAN: Function toggleArchive yang lebih jelas
+            function toggleArchive(notificationId, type, currentlyArchived) {
+                console.log('toggleArchive called with:', notificationId, type, 'currentlyArchived:', currentlyArchived);
+
+                var action = currentlyArchived ? 'unarchive' : 'archive';
+                var formData = new FormData();
+                formData.append('action', action);
+                formData.append('id', notificationId);
+                formData.append('type', type);
+
+                fetch('../admin/inbox-messages', {
+                    method: 'POST',
+                    body: new URLSearchParams(formData)
+                })
+                        .then(function (response) {
+                            console.log('Response status:', response.status);
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok: ' + response.status);
+                            }
+                            return response.text();
+                        })
+                        .then(function (text) {
+                            console.log('Response text:', text);
+                            try {
+                                var data = JSON.parse(text);
+                                console.log('Parsed response:', data);
+
+                                if (data.success) {
+                                    console.log('Successfully ' + action + 'd');
+                                    notificationModal.classList.add('hidden');
+                                    loadNotifications(); // Reload untuk update status
+                                } else {
+                                    alert('Failed: ' + (data.message || data.error || 'Unknown error'));
+                                }
+                            } catch (e) {
+                                console.error('JSON parse error:', e);
+                                alert('Invalid response from server');
+                            }
+                        })
+                        .catch(function (error) {
+                            console.error('Error:', error);
+                            alert('Failed to ' + action + '. Please try again.');
+                        });
+            }
+
+            // PERUBAHAN: Update openNotificationModal untuk simpan currentNotification
+            function openNotificationModal(notificationId, type) {
+                console.log('openNotificationModal called with:', notificationId, type);
+
+                var url = '../admin/inbox-messages?action=detail&id=' + notificationId + '&type=' + type;
+
+                fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                })
+                        .then(function (response) {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.text();
+                        })
+                        .then(function (text) {
+                            console.log('Detail response:', text);
+
+                            try {
+                                var notification = JSON.parse(text);
+
+                                if (notification.error) {
+                                    console.error('Error loading notification details:', notification.error);
+                                    showErrorMessage('Failed to load notification details');
+                                    return;
+                                }
+
+                                // Save current notification data
+                                currentNotificationId = notificationId;
+                                currentNotificationType = type;
+                                currentNotification = notification; // Simpan object notification lengkap
+
+                                console.log('Current notification saved:', currentNotification);
+
+                                // Set modal icon
+                                modalIcon.className = 'notification-type-icon mr-3';
+                                if (type === 'register') {
+                                    modalIcon.classList.add('notification-type-register');
+                                    modalIcon.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>';
+                                } else {
+                                    modalIcon.classList.add('notification-type-cancel');
+                                    modalIcon.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+                                }
+
+                                // Set modal title and subtitle
+                                modalTitle.textContent = notification.title || 'Notification Details';
+                                modalSubtitle.textContent = notification.displayDate || '';
+
+                                // Set modal content based on type
+                                var contentHtml = '';
+                                if (type === 'register') {
+                                    contentHtml = '<div>' +
+                                            '<div class="flex items-start mb-4">' +
+                                            '<img src="../profile_pictures/instructor/dummy.png" alt="Instructor" class="w-16 h-16 rounded-full object-cover border-2 border-blush mr-4">' +
+                                            '<div>' +
+                                            '<h4 class="font-medium text-espresso">' + (notification.instructorName || 'Unknown') + '</h4>' +
+                                            '<p class="text-sm text-espressoLighter">' + (notification.instructorEmail || 'No email') + '</p>' +
+                                            '<div class="mt-2 status-chip ' + getStatusClass(notification.status) + '">' +
+                                            (notification.status || 'unknown') +
+                                            '</div>' +
+                                            '</div>' +
+                                            '</div>' +
+                                            '<div class="space-y-3 text-sm">' +
+                                            '<div><span class="font-medium text-espressoLight">Phone:</span> ' + (notification.instructorPhone || 'Not provided') + '</div>' +
+                                            '<div><span class="font-medium text-espressoLight">NRIC:</span> ' + (notification.instructorNric || 'Not provided') + '</div>' +
+                                            '<div><span class="font-medium text-espressoLight">Registration Date:</span> ' + (notification.registerDate || 'Unknown') + '</div>' +
+                                            (notification.yearOfExperience ? '<div><span class="font-medium text-espressoLight">Experience:</span> ' + notification.yearOfExperience + ' years</div>' : '') +
+                                            (notification.address ? '<div><span class="font-medium text-espressoLight">Address:</span> ' + notification.address + '</div>' : '') +
+                                            '</div>' +
+                                            '<div class="mt-6 pt-4 border-t border-borderGray">' +
+                                            '<p class="text-sm text-espresso">This is a notification about a new instructor registration. Please review the instructor\'s details and take appropriate action in the instructor management section.</p>' +
+                                            '</div>' +
+                                            '</div>';
+                                } else {
+                                    contentHtml = '<div>' +
+                                            '<div class="mb-4">' +
+                                            '<h4 class="font-medium text-espresso mb-2">' + (notification.className || 'Unknown Class') + ' cancelled</h4>' +
+                                            '<div class="flex items-center space-x-4 text-sm">' +
+                                            '<div><span class="font-medium text-espressoLight">Instructor:</span> ' + (notification.instructorName || 'Unknown') + '</div>' +
+                                            '</div>' +
+                                            '</div>' +
+                                            '<div class="space-y-3 text-sm mb-4">' +
+                                            (notification.classType ? '<div><span class="font-medium text-espressoLight">Class Type:</span> ' + notification.classType + '</div>' : '') +
+                                            (notification.classLevel ? '<div><span class="font-medium text-espressoLight">Level:</span> ' + notification.classLevel + '</div>' : '') +
+                                            (notification.classDate ? '<div><span class="font-medium text-espressoLight">Date:</span> ' + notification.classDate + '</div>' : '') +
+                                            (notification.classTime ? '<div><span class="font-medium text-espressoLight">Time:</span> ' + notification.classTime + '</div>' : '') +
+                                            '</div>' +
+                                            '<div class="mt-4 pt-4 border-t border-borderGray">' +
+                                            '<h5 class="font-medium text-espresso mb-2">Cancellation Reason:</h5>' +
+                                            '<div class="bg-softGray p-4 rounded-lg">' +
+                                            '<p class="text-sm text-espressoLighter">' + (notification.cancellationReason || 'No reason provided') + '</p>' +
+                                            '</div>' +
+                                            '<p class="text-sm text-espresso mt-4">This is a notification about a class cancellation. Please check the class schedule and make necessary arrangements in the class management section.</p>' +
+                                            '</div>' +
+                                            '</div>';
+                                }
+
+                                modalContent.innerHTML = contentHtml;
+                                modalDate.textContent = 'Received ' + (notification.displayDate || '');
+
+                                // PERUBAHAN: Update button text berdasarkan status
+                                console.log('Notification isRead:', notification.isRead);
+                                console.log('Notification archived:', notification.archived);
+
+                                if (notification.isRead) {
+                                    markAsReadBtn.textContent = 'Mark as Unread';
+                                    markAsReadBtn.classList.remove('action-btn-mark');
+                                    markAsReadBtn.classList.add('action-btn-read');
+                                } else {
+                                    markAsReadBtn.textContent = 'Mark as Read';
+                                    markAsReadBtn.classList.remove('action-btn-read');
+                                    markAsReadBtn.classList.add('action-btn-mark');
+                                }
+
+                                if (notification.archived) {
+                                    archiveBtn.textContent = 'Unarchive';
+                                } else {
+                                    archiveBtn.textContent = 'Archive';
+                                }
+
+                                // Show modal
+                                notificationModal.classList.remove('hidden');
+
+                            } catch (e) {
+                                console.error('JSON parse error:', e);
+                                showErrorMessage('Failed to load notification details');
+                            }
+                        })
+                        .catch(function (error) {
+                            console.error('Error:', error);
+                            showErrorMessage('Failed to load notification details');
+                        });
+            }
+
+            function getStatusClass(status) {
+                if (status === 'pending') {
+                    return 'status-pending';
+                } else if (status === 'approved') {
+                    return 'status-approved';
+                } else if (status === 'rejected') {
+                    return 'status-rejected';
+                } else {
+                    return 'status-pending'; // fallback
+                }
+            }
+
+            function renderNotifications() {
+                notificationsList.innerHTML = '';
+
+                if (filteredData.length === 0) {
+                    noNotifications.classList.remove('hidden');
+                    notificationsList.classList.add('hidden');
+                    pagination.classList.add('hidden');
+                    return;
+                }
+
+                noNotifications.classList.add('hidden');
+                notificationsList.classList.remove('hidden');
+                pagination.classList.remove('hidden');
+
+                for (var i = 0; i < filteredData.length; i++) {
+                    var notification = filteredData[i];
+                    var item = document.createElement('div');
+
+                    var itemClass = 'notification-item p-4 ' + (!notification.isRead ? 'unread' : '');
+                    item.className = itemClass;
+                    item.setAttribute('data-id', notification.id);
+                    item.setAttribute('data-type', notification.type);
+
+                    item.addEventListener('click', function (e) {
+                        var id = this.getAttribute('data-id');
+                        var type = this.getAttribute('data-type');
+                        openNotificationModal(id, type);
+                    });
+
+                    // Icon based on type
+                    var icon = '';
+                    if (notification.type === 'register') {
+                        icon = '<div class="notification-type-icon notification-type-register">' +
+                                '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>' +
+                                '</svg></div>';
+                    } else {
+                        icon = '<div class="notification-type-icon notification-type-cancel">' +
+                                '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>' +
+                                '</svg></div>';
+                    }
+
+                    // Type tag
+                    var typeTag = '';
+                    if (notification.type === 'register') {
+                        typeTag = '<span class="notification-tag tag-register ml-2">Instructor Registration</span>';
+                    } else {
+                        typeTag = '<span class="notification-tag tag-cancel ml-2">Instructor Class Cancellation Alert</span>';
+                    }
+
+                    // Status chip - HANYA untuk registration
+                    var statusChip = '';
+                    if (notification.type === 'register') {
+                        var statusClass = getStatusClass(notification.status);
+                        statusChip = '<span class="status-chip ' + statusClass + ' ml-2">' + notification.status + '</span>';
+                    }
+
+                    // Content based on type
+                    var content = '';
+                    if (notification.type === 'register') {
+                        content =
+                                '<div class="flex-1 min-w-0">' +
+                                '<div class="flex items-center mb-1">' +
+                                '<h3 class="font-semibold text-espresso truncate">' + notification.instructorName + '</h3>' +
+                                typeTag +
+                                '</div>' +
+                                '<p class="text-sm text-espressoLighter mb-2">' + notification.instructorEmail + '</p>' +
+                                '<div class="flex items-center space-x-3">' +
+                                statusChip +
+                                '<span class="text-xs text-espressoLighter">Registered on ' + notification.registerDate + '</span>' +
+                                '</div>' +
+                                '</div>';
+                    } else {
+                        content =
+                                '<div class="flex-1 min-w-0">' +
+                                '<div class="flex items-center mb-1">' +
+                                '<h3 class="font-semibold text-espresso truncate">' + (notification.className || 'Class') + ' cancelled</h3>' +
+                                typeTag +
+                                '</div>' +
+                                '<p class="text-sm text-espressoLighter mb-2">Instructor: ' + notification.instructorName + ' • Date: ' + (notification.classDate || 'Unknown') + '</p>' +
+                                '<div class="flex items-center space-x-3">' +
+                                '<span class="text-xs text-espressoLighter">' + notification.displayDate + '</span>' +
+                                '</div>' +
+                                '</div>';
+                    }
+
+                    // Read status indicator
+                    var readIndicator = '';
+                    if (notification.isRead) {
+                        readIndicator = '<div class="w-2 h-2 rounded-full bg-espressoLighter"></div>';
+                    } else {
+                        readIndicator = '<div class="w-2 h-2 rounded-full bg-teal"></div>';
+                    }
+
+                    // Archive indicator
+                    var archiveIndicator = '';
+                    if (notification.archived) {
+                        archiveIndicator = '<svg class="w-4 h-4 text-espressoLighter ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>';
+                    }
+
+                    item.innerHTML =
+                            '<div class="flex items-start justify-between">' +
+                            '<div class="flex items-start flex-1 min-w-0">' +
+                            icon +
                             '<div class="flex-1 min-w-0">' +
-                            '<div class="flex items-center mb-1">' +
-                            '<h3 class="font-semibold text-espresso truncate">' + notification.instructorName + '</h3>' +
-                            typeTag +
+                            content +
                             '</div>' +
-                            '<p class="text-sm text-espressoLighter mb-2">' + notification.instructorEmail + '</p>' +
-                            '<div class="flex items-center space-x-3">' +
-                            statusChip +
-                            '<span class="text-xs text-espressoLighter">Registered on ' + notification.registerDate + '</span>' +
+                            '</div>' +
+                            '<div class="ml-4 flex flex-col items-end">' +
+                            '<div class="mb-2 flex items-center">' +
+                            readIndicator +
+                            archiveIndicator +
+                            '</div>' +
+                            '<span class="text-xs text-espressoLighter text-right">' + notification.displayDate + '</span>' +
                             '</div>' +
                             '</div>';
-                } else {
-                    content =
-                            '<div class="flex-1 min-w-0">' +
-                            '<div class="flex items-center mb-1">' +
-                            '<h3 class="font-semibold text-espresso truncate">' + (notification.className || 'Class') + ' cancelled</h3>' +
-                            typeTag +
-                            '</div>' +
-                            '<p class="text-sm text-espressoLighter mb-2">Instructor: ' + notification.instructorName + ' • Date: ' + (notification.classDate || 'Unknown') + '</p>' +
-                            '<div class="flex items-center space-x-3">' +
-                            statusChip +
-                            '<span class="text-xs text-espressoLighter">' + notification.displayDate + '</span>' +
-                            '</div>' +
-                            '</div>';
+
+                    notificationsList.appendChild(item);
                 }
-
-                // Read status indicator
-                var readIndicator = '';
-                if (notification.isRead) {
-                    readIndicator = '<div class="w-2 h-2 rounded-full bg-espressoLighter"></div>';
-                } else {
-                    readIndicator = '<div class="w-2 h-2 rounded-full bg-teal"></div>';
-                }
-
-                // Archive indicator
-                var archiveIndicator = '';
-                if (notification.archived) {
-                    archiveIndicator = '<svg class="w-4 h-4 text-espressoLighter ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>';
-                }
-
-                item.innerHTML =
-                        '<div class="flex items-start justify-between">' +
-                        '<div class="flex items-start flex-1 min-w-0">' +
-                        icon +
-                        '<div class="flex-1 min-w-0">' +
-                        content +
-                        '</div>' +
-                        '</div>' +
-                        '<div class="ml-4 flex flex-col items-end">' +
-                        '<div class="mb-2 flex items-center">' +
-                        readIndicator +
-                        archiveIndicator +
-                        '</div>' +
-                        '<span class="text-xs text-espressoLighter text-right">' + notification.displayDate + '</span>' +
-                        '</div>' +
-                        '</div>';
-
-                notificationsList.appendChild(item);
-            }
-        }
-
-        function updatePaginationInfo(totalCount, totalPages) {
-            var startIndex = (currentPage - 1) * itemsPerPage + 1;
-            var endIndex = Math.min(currentPage * itemsPerPage, totalCount);
-
-            startRowSpan.textContent = startIndex;
-            endRowSpan.textContent = endIndex;
-            totalRowsSpan.textContent = totalCount;
-
-            prevPageBtn.disabled = currentPage === 1;
-            nextPageBtn.disabled = currentPage === totalPages;
-
-            pageNumbers.innerHTML = '';
-            var maxVisiblePages = 5;
-            var startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-            var endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-            if (endPage - startPage + 1 < maxVisiblePages) {
-                startPage = Math.max(1, endPage - maxVisiblePages + 1);
             }
 
-            for (var i = startPage; i <= endPage; i++) {
-                var pageBtn = document.createElement('button');
-                pageBtn.textContent = i;
-                pageBtn.className = 'px-3 py-1.5 rounded text-sm min-w-[36px] transition-colors ' +
-                        (i === currentPage ? 'bg-dusty text-whitePure' : 'border border-borderGray text-espressoLighter hover:bg-softGray');
-                pageBtn.addEventListener('click', (function (page) {
-                    return function () {
-                        currentPage = page;
-                        loadNotifications();
-                    };
-                })(i));
-                pageNumbers.appendChild(pageBtn);
+            function updatePaginationInfo(totalCount, totalPages) {
+                var startIndex = (currentPage - 1) * itemsPerPage + 1;
+                var endIndex = Math.min(currentPage * itemsPerPage, totalCount);
+
+                startRowSpan.textContent = startIndex;
+                endRowSpan.textContent = endIndex;
+                totalRowsSpan.textContent = totalCount;
+
+                prevPageBtn.disabled = currentPage === 1;
+                nextPageBtn.disabled = currentPage === totalPages;
+
+                pageNumbers.innerHTML = '';
+                var maxVisiblePages = 5;
+                var startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                var endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+                if (endPage - startPage + 1 < maxVisiblePages) {
+                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                }
+
+                for (var i = startPage; i <= endPage; i++) {
+                    var pageBtn = document.createElement('button');
+                    pageBtn.textContent = i;
+                    pageBtn.className = 'px-3 py-1.5 rounded text-sm min-w-[36px] transition-colors ' +
+                            (i === currentPage ? 'bg-dusty text-whitePure' : 'border border-borderGray text-espressoLighter hover:bg-softGray');
+                    pageBtn.addEventListener('click', (function (page) {
+                        return function () {
+                            currentPage = page;
+                            loadNotifications();
+                        };
+                    })(i));
+                    pageNumbers.appendChild(pageBtn);
+                }
             }
-        }
 
-        function showErrorMessage(message) {
-            // Create error message element
-            var errorDiv = document.createElement('div');
-            errorDiv.className = 'bg-dangerBg border border-dangerBorder text-dangerText px-4 py-3 rounded mb-4';
-            errorDiv.innerHTML = '<strong>Error:</strong> ' + message;
+            function showErrorMessage(message) {
+                // Create error message element
+                var errorDiv = document.createElement('div');
+                errorDiv.className = 'bg-dangerBg border border-dangerBorder text-dangerText px-4 py-3 rounded mb-4';
+                errorDiv.innerHTML = '<strong>Error:</strong> ' + message;
 
-            // Insert at the top of the main content
-            var mainContent = document.querySelector('main > div');
-            mainContent.insertBefore(errorDiv, mainContent.firstChild);
+                // Insert at the top of the main content
+                var mainContent = document.querySelector('main > div');
+                mainContent.insertBefore(errorDiv, mainContent.firstChild);
 
-            // Remove after 5 seconds
-            setTimeout(function() {
-                errorDiv.remove();
-            }, 5000);
-        }
+                // Remove after 5 seconds
+                setTimeout(function () {
+                    errorDiv.remove();
+                }, 5000);
+            }
 
-        document.addEventListener('DOMContentLoaded', init);
-    </script>
+            document.addEventListener('DOMContentLoaded', init);
+        </script>
 
     </body>
 </html>

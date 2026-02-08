@@ -522,7 +522,6 @@ public class ClassManagementServlet extends HttpServlet {
     }
 
     // ========== UPDATE CLASS ==========
-    // ========== UPDATE CLASS ==========
     private void updateClass(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException, SQLException {
 
@@ -534,28 +533,6 @@ public class ClassManagementServlet extends HttpServlet {
         }
 
         int classId = Integer.parseInt(classIdStr);
-
-        // Get current class info
-        ClassDAO classDAO = new ClassDAO();
-        Class currentClass = classDAO.getClassById(classId);
-
-        if (currentClass == null) {
-            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            response.getWriter().print("{\"success\": false, \"message\": \"Class not found\"}");
-            return;
-        }
-
-        // Check if class has already passed
-        long classDateTime = currentClass.getClassDate().getTime() + currentClass.getClassStartTime().getTime();
-        long now = System.currentTimeMillis();
-        long hoursRemaining = (classDateTime - now) / (1000 * 60 * 60);
-
-        // Block update if class has passed (hoursRemaining negative means class already happened)
-        if (hoursRemaining < 0) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().print("{\"success\": false, \"message\": \"Cannot update: Class has already passed\"}");
-            return;
-        }
 
         // Get form parameters
         String className = request.getParameter("className");
@@ -570,7 +547,21 @@ public class ClassManagementServlet extends HttpServlet {
         String description = request.getParameter("description");
         String generateNewQR = request.getParameter("generateNewQR");
 
+        // Get current class info
+        ClassDAO classDAO = new ClassDAO();
+        Class currentClass = classDAO.getClassById(classId);
+
+        if (currentClass == null) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            response.getWriter().print("{\"success\": false, \"message\": \"Class not found\"}");
+            return;
+        }
+
         // Check 24-hour rule for status change
+        long classDateTime = currentClass.getClassDate().getTime() + currentClass.getClassStartTime().getTime();
+        long now = System.currentTimeMillis();
+        long hoursRemaining = (classDateTime - now) / (1000 * 60 * 60);
+
         // Cannot set to inactive if less than 24 hours remaining
         if ("inactive".equals(classStatus)
                 && !"inactive".equals(currentClass.getClassStatus())
@@ -698,7 +689,6 @@ public class ClassManagementServlet extends HttpServlet {
     }
 
     // ========== DELETE CLASS ==========
-    // ========== DELETE CLASS ==========
     private void deleteClass(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException, SQLException {
 
@@ -712,26 +702,6 @@ public class ClassManagementServlet extends HttpServlet {
         int classId = Integer.parseInt(classIdStr);
         ClassDAO classDAO = new ClassDAO();
         ClassConfirmationDAO confirmationDAO = new ClassConfirmationDAO();
-
-        // Get class info first
-        Class cls = classDAO.getClassById(classId);
-        if (cls == null) {
-            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            response.getWriter().print("{\"success\": false, \"message\": \"Class not found\"}");
-            return;
-        }
-
-        // Check if class has already passed
-        long classDateTime = cls.getClassDate().getTime() + cls.getClassStartTime().getTime();
-        long now = System.currentTimeMillis();
-        long hoursRemaining = (classDateTime - now) / (1000 * 60 * 60);
-
-        // Block delete if class has passed
-        if (hoursRemaining < 0) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().print("{\"success\": false, \"message\": \"Cannot delete: Class has already passed\"}");
-            return;
-        }
 
         // Check if class has instructors
         Map<String, Object> classDetails = classDAO.getClassWithInstructors(classId);
@@ -755,7 +725,6 @@ public class ClassManagementServlet extends HttpServlet {
     }
 
     // ========== EMERGENCY WITHDRAW ==========
-    // ========== EMERGENCY WITHDRAW ==========
     private void emergencyWithdraw(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException, SQLException {
 
@@ -778,18 +747,6 @@ public class ClassManagementServlet extends HttpServlet {
             return;
         }
 
-        // Calculate hours remaining
-        long classDateTime = cls.getClassDate().getTime() + cls.getClassStartTime().getTime();
-        long now = System.currentTimeMillis();
-        long hoursRemaining = (classDateTime - now) / (1000 * 60 * 60);
-
-        // Block emergency withdraw if class has passed
-        if (hoursRemaining < 0) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().print("{\"success\": false, \"message\": \"Cannot withdraw: Class has already passed\"}");
-            return;
-        }
-
         // Get instructor info
         Map<String, Object> classDetails = classDAO.getClassWithInstructors(classId);
         if (classDetails == null || !classDetails.containsKey("mainInstructor")) {
@@ -807,6 +764,11 @@ public class ClassManagementServlet extends HttpServlet {
         if (hasRelief) {
             reliefInstructor = (Map<String, Object>) classDetails.get("reliefInstructor");
         }
+
+        // Calculate hours remaining
+        long classDateTime = cls.getClassDate().getTime() + cls.getClassStartTime().getTime();
+        long now = System.currentTimeMillis();
+        long hoursRemaining = (classDateTime - now) / (1000 * 60 * 60);
 
         Connection conn = null;
 
@@ -891,6 +853,19 @@ public class ClassManagementServlet extends HttpServlet {
 
                 resultMessage = "Class has been cancelled. " + mainInstructorName
                         + " has been withdrawn and class set to inactive (no relief instructor available within 24 hours).";
+            } else {
+                // Class has already passed
+                resultMessage = "Class has already passed. " + mainInstructorName + " has been withdrawn from records.";
+
+                // Set main instructor to cancelled
+                String cancelSql = "UPDATE class_confirmation SET action = 'cancelled', cancelledAt = CURRENT_TIMESTAMP, "
+                        + "cancellationReason = 'Emergency withdrawal - class already passed' "
+                        + "WHERE classID = ? AND instructorID = ? AND action = 'confirmed'";
+                try (PreparedStatement stmt = conn.prepareStatement(cancelSql)) {
+                    stmt.setInt(1, classId);
+                    stmt.setInt(2, mainInstructorId);
+                    stmt.executeUpdate();
+                }
             }
 
             conn.commit();

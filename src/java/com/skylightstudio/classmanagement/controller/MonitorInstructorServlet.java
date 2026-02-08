@@ -118,7 +118,17 @@ public class MonitorInstructorServlet extends HttpServlet {
             out.print("<email>" + escapeXml(instructor.get("email").toString()) + "</email>");
             out.print("<experience>" + getExperienceString(instructor.get("yearOfExperience")) + "</experience>");
 
-            // ✅ FIX: Check if dateJoined exists and is not null
+            // ✅ ADD: Profile image path
+            String profileImage = (String) instructor.get("profileImageFilePath");
+            if (profileImage != null && !profileImage.isEmpty() && !profileImage.equals("null")) {
+                if (!profileImage.startsWith("../")) {
+                    profileImage = "../" + profileImage;
+                }
+                out.print("<profileImage>" + escapeXml(profileImage) + "</profileImage>");
+            } else {
+                out.print("<profileImage>../profile_pictures/instructor/dummy.png</profileImage>");
+            }
+
             Object dateJoined = instructor.get("dateJoined");
             if (dateJoined != null) {
                 out.print("<dateJoined>" + formatDate(dateJoined) + "</dateJoined>");
@@ -811,11 +821,14 @@ public class MonitorInstructorServlet extends HttpServlet {
         return 0; // Placeholder
     }
 
+    // ========== NEW: COMPLETE PERFORMANCE DATA WITH PERIOD FILTER ==========
+    // ========== NEW: COMPLETE PERFORMANCE DATA WITH PERIOD FILTER ==========
     private void getCompletePerformanceData(HttpServletRequest request, HttpServletResponse response)
             throws SQLException, IOException {
 
         System.out.println("=== getCompletePerformanceData START ===");
 
+        // ✅ VALIDATE parameters first
         String idParam = request.getParameter("id");
         String period = request.getParameter("period");
 
@@ -825,10 +838,10 @@ public class MonitorInstructorServlet extends HttpServlet {
         if (idParam == null || idParam.trim().isEmpty()) {
             System.err.println("❌ ERROR: Missing instructor ID");
             response.setContentType("text/xml;charset=UTF-8");
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             PrintWriter out = response.getWriter();
             out.print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
             out.print("<error><message>Missing instructor ID</message></error>");
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
 
@@ -839,13 +852,14 @@ public class MonitorInstructorServlet extends HttpServlet {
         } catch (NumberFormatException e) {
             System.err.println("❌ ERROR: Invalid instructor ID format: " + idParam);
             response.setContentType("text/xml;charset=UTF-8");
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             PrintWriter out = response.getWriter();
             out.print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
             out.print("<error><message>Invalid instructor ID</message></error>");
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
 
+        // Default period if not provided
         if (period == null || period.trim().isEmpty()) {
             period = "all";
             System.out.println("⚠️ Period not provided, using default: all");
@@ -853,6 +867,7 @@ public class MonitorInstructorServlet extends HttpServlet {
 
         Connection conn = null;
         try {
+            // Get instructor
             System.out.println("Getting instructor by ID...");
             com.skylightstudio.classmanagement.model.Instructor instructor
                     = instructorDAO.getInstructorById(instructorId);
@@ -860,10 +875,10 @@ public class MonitorInstructorServlet extends HttpServlet {
             if (instructor == null) {
                 System.err.println("❌ ERROR: Instructor not found with ID: " + instructorId);
                 response.setContentType("text/xml;charset=UTF-8");
-                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 PrintWriter out = response.getWriter();
                 out.print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
                 out.print("<error><message>Instructor not found</message></error>");
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 return;
             }
 
@@ -872,6 +887,8 @@ public class MonitorInstructorServlet extends HttpServlet {
             conn = DBConnection.getConnection();
             System.out.println("✅ Database connection established");
 
+            // Get class statistics
+            System.out.println("Getting class statistics...");
             int totalConfirmedClasses = classConfirmationDAO.countConfirmedClassesForInstructor(instructorId);
             int cancelledClasses = classConfirmationDAO.countCancelledClassesForInstructor(instructorId);
             int completedClasses = totalConfirmedClasses - cancelledClasses;
@@ -882,6 +899,8 @@ public class MonitorInstructorServlet extends HttpServlet {
             System.out.println("Cancelled: " + cancelledClasses);
             System.out.println("Completed: " + completedClasses);
 
+            // Get ratings
+            System.out.println("Getting ratings...");
             Map<String, Double> ratings = feedbackDAO.getAverageRatingsForInstructor(instructorId);
 
             double avgTeaching = ratings.getOrDefault("teaching", 0.0);
@@ -890,6 +909,7 @@ public class MonitorInstructorServlet extends HttpServlet {
             double avgPunctuality = ratings.getOrDefault("punctuality", 0.0);
             double avgOverall = ratings.getOrDefault("overall", 0.0);
 
+            // Handle NaN
             if (Double.isNaN(avgTeaching)) {
                 avgTeaching = 0;
             }
@@ -908,38 +928,54 @@ public class MonitorInstructorServlet extends HttpServlet {
 
             System.out.println("✅ Ratings retrieved successfully");
 
+            // Get highest and lowest ratings based on period
+            System.out.println("Getting rating extremes for period: " + period);
             Map<String, Object> ratingExtremes = getRatingExtremesForPeriod(instructorId, period);
             System.out.println("✅ Rating extremes retrieved");
 
+            // Get monthly trend data based on period
+            System.out.println("Getting monthly trend for period: " + period);
             List<Map<String, Object>> monthlyTrend = getMonthlyTrendForPeriod(instructorId, period);
             System.out.println("✅ Monthly trend retrieved, count: " + monthlyTrend.size());
 
-            // Generate XML
+            // ========== GENERATE XML RESPONSE ==========
+            System.out.println("Generating XML response...");
             response.setContentType("text/xml;charset=UTF-8");
-            response.setStatus(HttpServletResponse.SC_OK);
             PrintWriter out = response.getWriter();
 
             out.print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
             out.print("<performance>");
+
+            // Basic Info
             out.print("<instructorName>" + escapeXml(instructor.getName()) + "</instructorName>");
+
+            // Class Statistics
             out.print("<totalClasses>" + totalConfirmedClasses + "</totalClasses>");
             out.print("<cancelled>" + cancelledClasses + "</cancelled>");
             out.print("<completion>" + String.format("%.0f", completionRate) + "%</completion>");
+
+            // All 5 Ratings
             out.print("<teaching>" + String.format("%.1f", avgTeaching) + "</teaching>");
             out.print("<communication>" + String.format("%.1f", avgCommunication) + "</communication>");
             out.print("<support>" + String.format("%.1f", avgSupport) + "</support>");
             out.print("<punctuality>" + String.format("%.1f", avgPunctuality) + "</punctuality>");
             out.print("<overallRating>" + String.format("%.1f", avgOverall) + "</overallRating>");
+
+            // Highest ratings
             out.print("<teachingHighest>" + ratingExtremes.getOrDefault("maxTeaching", String.format("%.1f", avgTeaching)) + "</teachingHighest>");
             out.print("<communicationHighest>" + ratingExtremes.getOrDefault("maxCommunication", String.format("%.1f", avgCommunication)) + "</communicationHighest>");
             out.print("<supportHighest>" + ratingExtremes.getOrDefault("maxSupport", String.format("%.1f", avgSupport)) + "</supportHighest>");
             out.print("<punctualityHighest>" + ratingExtremes.getOrDefault("maxPunctuality", String.format("%.1f", avgPunctuality)) + "</punctualityHighest>");
             out.print("<overallHighest>" + ratingExtremes.getOrDefault("maxOverall", String.format("%.1f", avgOverall)) + "</overallHighest>");
+
+            // Lowest ratings
             out.print("<teachingLowest>" + ratingExtremes.getOrDefault("minTeaching", String.format("%.1f", avgTeaching)) + "</teachingLowest>");
             out.print("<communicationLowest>" + ratingExtremes.getOrDefault("minCommunication", String.format("%.1f", avgCommunication)) + "</communicationLowest>");
             out.print("<supportLowest>" + ratingExtremes.getOrDefault("minSupport", String.format("%.1f", avgSupport)) + "</supportLowest>");
             out.print("<punctualityLowest>" + ratingExtremes.getOrDefault("minPunctuality", String.format("%.1f", avgPunctuality)) + "</punctualityLowest>");
             out.print("<overallLowest>" + ratingExtremes.getOrDefault("minOverall", String.format("%.1f", avgOverall)) + "</overallLowest>");
+
+            // Monthly Trend
             out.print("<monthlyTrend>");
             for (Map<String, Object> monthData : monthlyTrend) {
                 out.print("<month>");
@@ -949,6 +985,7 @@ public class MonitorInstructorServlet extends HttpServlet {
                 out.print("</month>");
             }
             out.print("</monthlyTrend>");
+
             out.print("</performance>");
 
             System.out.println("✅ XML response sent successfully");
@@ -957,19 +994,21 @@ public class MonitorInstructorServlet extends HttpServlet {
         } catch (SQLException e) {
             System.err.println("❌ SQL ERROR in getCompletePerformanceData:");
             e.printStackTrace();
+
             response.setContentType("text/xml;charset=UTF-8");
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             PrintWriter out = response.getWriter();
             out.print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
             out.print("<error><message>Database error: " + escapeXml(e.getMessage()) + "</message></error>");
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         } catch (Exception e) {
             System.err.println("❌ GENERAL ERROR in getCompletePerformanceData:");
             e.printStackTrace();
+
             response.setContentType("text/xml;charset=UTF-8");
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             PrintWriter out = response.getWriter();
             out.print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
             out.print("<error><message>Server error: " + escapeXml(e.getMessage()) + "</message></error>");
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         } finally {
             if (conn != null) {
                 try {

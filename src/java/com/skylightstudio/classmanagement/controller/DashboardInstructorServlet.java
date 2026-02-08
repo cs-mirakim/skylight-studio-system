@@ -17,7 +17,7 @@ import java.time.DayOfWeek;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@WebServlet(name = "DashboardInstructorServlet", urlPatterns = {"/instructor/DashboardInstructorServlet"})
+@WebServlet(name = "DashboardInstructorServlet", urlPatterns = {"/DashboardInstructorServlet"})
 public class DashboardInstructorServlet extends HttpServlet {
 
     @Override

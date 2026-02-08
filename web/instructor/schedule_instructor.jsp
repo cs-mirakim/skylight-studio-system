@@ -422,12 +422,12 @@
                         <p id="modalDescription" class="text-espresso"></p>
                     </div>
                     <div>
-                        <h4 class="text-sm font-semibold text-espresso/70 mb-1">Maximum Capacity</h4>
+                        <h4 class="text-sm font-semibold text-espresso/70 mb-1">Total Students</h4>
                         <p id="modalCapacity" class="text-espresso"></p>
                     </div>
                     <div>
-                        <h4 class="text-sm font-semibold text-espresso/70 mb-1">Current Students</h4>
-                        <p id="modalStudents" class="text-espresso"></p>
+                        <h4 class="text-sm font-semibold text-espresso/70 mb-1" hidden>Current Students</h4>
+                        <p id="modalStudents" class="text-espresso hidden"></p>
                     </div>
                 </div>
 

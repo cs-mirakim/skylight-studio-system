@@ -189,7 +189,7 @@
                                 </label>
                                 <input id="phone" name="phone" type="tel"
                                        class="w-full p-3 border border-blush rounded-lg focus:outline-none focus:ring-2 focus:ring-dusty focus:border-transparent transition"
-                                       placeholder="+60 12-345 6789" />
+                                       placeholder="0123456789" />
                             </div>
 
                             <div>

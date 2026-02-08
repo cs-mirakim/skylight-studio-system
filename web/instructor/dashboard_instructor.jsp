@@ -810,7 +810,7 @@
 
                                     function showDayClasses(dayName, date, classCount) {
                                         if (classCount > 0) {
-                                            alert(dayName + ', ' + date + ' has ' + classCount + ' class(es).\nClick on individual class for details.');
+                                            alert(dayName + ', ' + date + ' has ' + classCount + ' class(es).');
                                         }
                                     }
 

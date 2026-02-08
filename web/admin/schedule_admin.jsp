@@ -1052,12 +1052,7 @@
 
                     // Action buttons
                     var actionButtons = '';
-
-                    // CHECK: Jika class sudah passed, show message saja
-                    var timeRemaining = calculateHoursRemaining(classItem);
-                    if (timeRemaining.isPast) {
-                        actionButtons = '<div class="text-sm text-espressoLighter italic">No actions available</div>';
-                    } else if (hasInstructor(classItem)) {
+                    if (hasInstructor(classItem)) {
                         // Has instructor - Edit + Emergency Withdraw
                         actionButtons = '<div class="flex flex-col space-y-2">' +
                                 '<button onclick="editClass(' + classItem.classID + ')" class="text-teal hover:text-tealHover font-medium text-left">Edit Class</button>' +
@@ -1190,21 +1185,12 @@
             }
 
             // Edit class
-            // EDIT CLASS FUNCTION
             window.editClass = function (classId) {
                 fetch('../ClassManagementServlet?action=getClass&classId=' + classId)
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
                                 var classItem = data.data;
-
-                                // CHECK: Jika class sudah passed, block edit
-                                var timeRemaining = calculateHoursRemaining(classItem);
-                                if (timeRemaining.isPast) {
-                                    alert('Cannot edit: This class has already passed.');
-                                    return;
-                                }
-
                                 currentEditingClass = classItem;
 
                                 document.getElementById('editClassId').value = classItem.classID;
@@ -1295,20 +1281,12 @@
             }
 
             // Show emergency withdraw modal
-            // SHOW EMERGENCY WITHDRAW MODAL
             window.showEmergencyWithdraw = function (classId) {
                 var classItem = classesData.find(function (item) {
                     return item.classID === classId;
                 });
 
                 if (classItem && hasInstructor(classItem)) {
-                    // CHECK: Jika class sudah passed, block emergency withdraw
-                    var timeRemaining = calculateHoursRemaining(classItem);
-                    if (timeRemaining.isPast) {
-                        alert('Cannot withdraw: This class has already passed.');
-                        return;
-                    }
-
                     classToWithdraw = classItem;
 
                     var timeRemaining = calculateHoursRemaining(classItem);
@@ -1439,20 +1417,12 @@
             }
 
             // Confirm delete
-            // CONFIRM DELETE
             window.confirmDelete = function (classId) {
                 var classItem = classesData.find(function (item) {
                     return item.classID === classId;
                 });
 
                 if (classItem) {
-                    // CHECK: Jika class sudah passed, block delete
-                    var timeRemaining = calculateHoursRemaining(classItem);
-                    if (timeRemaining.isPast) {
-                        alert('Cannot delete: This class has already passed.');
-                        return;
-                    }
-
                     if (hasInstructor(classItem)) {
                         alert("Cannot delete class: Class has a confirmed instructor. Use 'Emergency Withdraw' first to remove instructor.");
                         return;

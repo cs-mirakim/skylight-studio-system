@@ -749,7 +749,6 @@
                                                 var instructorElements = xmlDoc.getElementsByTagName('instructor');
                                                 var nameFilter = document.getElementById('nameFilter');
 
-                                                // Clear existing options except "All Instructors"
                                                 while (nameFilter.options.length > 1) {
                                                     nameFilter.remove(1);
                                                 }
@@ -764,22 +763,22 @@
                                                         experience: element.getElementsByTagName('experience')[0].textContent,
                                                         dateJoined: element.getElementsByTagName('dateJoined')[0].textContent,
                                                         status: element.getElementsByTagName('status')[0].textContent,
-                                                        registrationStatus: element.getElementsByTagName('registrationStatus')[0].textContent
+                                                        registrationStatus: element.getElementsByTagName('registrationStatus')[0].textContent,
+                                                        // ✅ ADD: Profile image
+                                                        profileImage: element.getElementsByTagName('profileImage')[0] ?
+                                                                element.getElementsByTagName('profileImage')[0].textContent :
+                                                                '../profile_pictures/instructor/dummy.png'
                                                     };
 
                                                     allInstructors.push(instructor);
 
-                                                    // Add to name filter dropdown
                                                     var option = document.createElement('option');
                                                     option.value = instructor.id;
                                                     option.textContent = instructor.name;
                                                     nameFilter.appendChild(option);
                                                 }
 
-                                                // Initialize filtered instructors to all
                                                 filteredInstructors = allInstructors.slice();
-
-                                                // Render table
                                                 renderInstructorTable();
                                             })
                                             .catch(function (error) {
@@ -857,15 +856,17 @@
                                         statusBadge = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-dangerBg text-dangerText">Inactive</span>';
                                     }
 
-                                    // Determine button text based on status
                                     var actionButtonText = instructor.status === 'active' ? 'Deactivate' : 'Activate';
                                     var actionButtonClass = instructor.status === 'active' ? 'text-dusty hover:text-dustyHover' : 'text-teal hover:text-tealHover';
                                     var actionButtonBorder = instructor.status === 'active' ? 'border-dusty' : 'border-teal';
 
+                                    // ✅ FIX: Use instructor.profileImage if available, else use dummy
+                                    var imgSrc = instructor.profileImage || '../profile_pictures/instructor/dummy.png';
+
                                     row.innerHTML = '<td class="px-6 py-4 whitespace-nowrap">' +
                                             '<div class="flex items-center">' +
                                             '<div class="flex-shrink-0 h-10 w-10">' +
-                                            '<img class="h-10 w-10 rounded-full object-cover" src="../profile_pictures/instructor/dummy.png" alt="' + instructor.name + '">' +
+                                            '<img class="h-10 w-10 rounded-full object-cover" src="' + imgSrc + '" alt="' + instructor.name + '">' +
                                             '</div>' +
                                             '<div class="ml-4">' +
                                             '<div class="text-sm font-medium text-espresso">' + instructor.name + '</div>' +
