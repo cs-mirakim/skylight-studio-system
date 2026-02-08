@@ -31,9 +31,10 @@
         <param-name>smtpFromEmail</param-name>
         <param-value>noreply@skylightstudio.com</param-value>
     </context-param>
+    <!-- DYNAMIC URL - will use environment variable APP_URL if available -->
     <context-param>
         <param-name>resetLinkBase</param-name>
-        <param-value>http://localhost:8080/SkylightStudioClassManagementSystem/general/reset_password.jsp</param-value>
+        <param-value>${APP_URL}/general/reset_password.jsp</param-value>
     </context-param>
     
     <welcome-file-list>

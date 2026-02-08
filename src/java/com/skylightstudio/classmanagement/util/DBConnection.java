@@ -6,17 +6,27 @@ import java.sql.SQLException;
 
 public class DBConnection {
 
-    private static final String DB_URL = "jdbc:derby://localhost:1527/SkylightStudioDB";
-    private static final String DB_USER = "app";
-    private static final String DB_PASSWORD = "app";
+    // Get database config from environment variables (for production) or use defaults (for local)
+    private static final String DB_URL = System.getenv("DATABASE_URL") != null
+            ? System.getenv("DATABASE_URL")
+            : "jdbc:postgresql://localhost:5432/skylightstudio";
+
+    private static final String DB_USER = System.getenv("DB_USER") != null
+            ? System.getenv("DB_USER")
+            : "postgres";
+
+    private static final String DB_PASSWORD = System.getenv("DB_PASSWORD") != null
+            ? System.getenv("DB_PASSWORD")
+            : "postgres";
 
     static {
         try {
-            Class.forName("org.apache.derby.jdbc.ClientDriver");
-            System.out.println("[DBConnection] Derby JDBC Driver loaded successfully");
+            // Load PostgreSQL driver
+            Class.forName("org.postgresql.Driver");
+            System.out.println("[DBConnection] PostgreSQL JDBC Driver loaded successfully");
         } catch (ClassNotFoundException e) {
-            System.err.println("[DBConnection] ERROR: Derby driver not found");
-            throw new RuntimeException("Derby JDBC Driver not found", e);
+            System.err.println("[DBConnection] ERROR: PostgreSQL driver not found");
+            throw new RuntimeException("PostgreSQL JDBC Driver not found", e);
         }
     }
 
@@ -47,8 +57,7 @@ public class DBConnection {
             }
         }
     }
-    
-    // Test connection method
+
     public static boolean testConnection() {
         try (Connection conn = getConnection()) {
             return conn != null && !conn.isClosed();
