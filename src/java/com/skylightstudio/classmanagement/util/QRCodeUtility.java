@@ -96,13 +96,13 @@ public class QRCodeUtility {
 
         if (appUrl != null && !appUrl.isEmpty()) {
             // Production: use APP_URL
-            return appUrl + "/general/feedback.jsp?classId=" + classId;
+            return appUrl + "/instructor/feedback.jsp?classId=" + classId;
         } else {
             // Local development: build from request
             String baseUrl = request.getRequestURL().toString();
             String contextPath = request.getContextPath();
             String url = baseUrl.substring(0, baseUrl.indexOf(contextPath)) + contextPath;
-            return url + "/general/feedback.jsp?classId=" + classId;
+            return url + "/instructor/feedback.jsp?classId=" + classId;
         }
     }
 
