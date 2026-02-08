@@ -1,61 +1,85 @@
 package com.skylightstudio.classmanagement.util;
 
-import java.sql.*;
-import java.util.Properties;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.net.URI;
 
 public class DBConnection {
 
     static {
         try {
             Class.forName("org.postgresql.Driver");
-            System.out.println("✅ PostgreSQL Driver Loaded");
+            System.out.println("[DBConnection] PostgreSQL JDBC Driver loaded successfully");
         } catch (ClassNotFoundException e) {
-            throw new RuntimeException("Driver not found", e);
+            System.err.println("[DBConnection] ERROR: PostgreSQL driver not found");
+            throw new RuntimeException("PostgreSQL JDBC Driver not found", e);
         }
     }
 
     public static Connection getConnection() throws SQLException {
-        // HARDCODE DENGAN CREDENTIAL BETUL dari DATABASE_URL
-        String jdbcUrl = "jdbc:postgresql://skylight-studio-db.flycast:5432/skylight_studio";
-        String username = "skylight_studio";
-        String password = "AbxXCf8wR9KExwD";
+        System.out.println("[DBConnection] Creating new connection...");
 
-        System.out.println("🔗 Connecting to: jdbc:postgresql://skylight-studio-db.flycast:5432/skylight_studio");
-        System.out.println("👤 User: skylight_studio");
+        String dbUrl;
+        String dbUser;
+        String dbPassword;
+
+        // Get DATABASE_URL from environment
+        String databaseUrl = System.getenv("DATABASE_URL");
+
+        if (databaseUrl != null && !databaseUrl.isEmpty()) {
+            // Parse Fly.io DATABASE_URL format: postgres://user:password@host:port/database
+            try {
+                // Replace postgres:// with postgresql:// for JDBC compatibility
+                if (databaseUrl.startsWith("postgres://")) {
+                    databaseUrl = databaseUrl.replace("postgres://", "postgresql://");
+                }
+
+                URI dbUri = new URI(databaseUrl);
+                String userInfo = dbUri.getUserInfo();
+
+                if (userInfo != null) {
+                    String[] credentials = userInfo.split(":");
+                    dbUser = credentials[0];
+                    dbPassword = credentials.length > 1 ? credentials[1] : "";
+                } else {
+                    dbUser = "postgres";
+                    dbPassword = "";
+                }
+
+                // Build JDBC URL
+                dbUrl = "jdbc:postgresql://" + dbUri.getHost() + ":" + dbUri.getPort() + dbUri.getPath();
+
+                System.out.println("[DBConnection] Using Fly.io DATABASE_URL");
+                System.out.println("[DBConnection] Host: " + dbUri.getHost());
+                System.out.println("[DBConnection] Port: " + dbUri.getPort());
+                System.out.println("[DBConnection] Database: " + dbUri.getPath());
+                System.out.println("[DBConnection] User: " + dbUser);
+
+            } catch (Exception e) {
+                System.err.println("[DBConnection] Error parsing DATABASE_URL: " + e.getMessage());
+                e.printStackTrace();
+                throw new SQLException("Failed to parse DATABASE_URL", e);
+            }
+        } else {
+            // Local development fallback
+            dbUrl = "jdbc:postgresql://localhost:5432/skylightstudio";
+            dbUser = "postgres";
+            dbPassword = "postgres";
+            System.out.println("[DBConnection] Using local PostgreSQL");
+        }
 
         try {
-            Properties props = new Properties();
-            props.setProperty("user", username);
-            props.setProperty("password", password);
-            props.setProperty("ssl", "false");
-            props.setProperty("sslmode", "disable");
-
-            Connection conn = DriverManager.getConnection(jdbcUrl, props);
-            System.out.println("✅ CONNECTION SUCCESS!");
-            System.out.println("📊 Database: " + conn.getCatalog());
-
+            Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
+            System.out.println("[DBConnection] Connection created successfully");
+            System.out.println("[DBConnection] Database: " + conn.getMetaData().getDatabaseProductName());
             return conn;
-
         } catch (SQLException e) {
-            System.err.println("❌ CONNECTION FAILED: " + e.getMessage());
-
-            // Cuba fallback ke internal address
-            try {
-                System.out.println("🔄 Trying fallback to internal address...");
-                String fallbackUrl = "jdbc:postgresql://skylight-studio-db.internal:5432/skylight_studio";
-                Properties fallbackProps = new Properties();
-                fallbackProps.setProperty("user", username);
-                fallbackProps.setProperty("password", password);
-                fallbackProps.setProperty("ssl", "false");
-                fallbackProps.setProperty("sslmode", "disable");
-
-                Connection conn = DriverManager.getConnection(fallbackUrl, fallbackProps);
-                System.out.println("✅ FALLBACK CONNECTION SUCCESS!");
-                return conn;
-            } catch (SQLException e2) {
-                System.err.println("❌ FALLBACK ALSO FAILED: " + e2.getMessage());
-                throw e; // Throw original error
-            }
+            System.err.println("[DBConnection] Error creating connection: " + e.getMessage());
+            System.err.println("[DBConnection] JDBC URL: " + dbUrl);
+            System.err.println("[DBConnection] User: " + dbUser);
+            e.printStackTrace();
+            throw e;
         }
     }
 
@@ -64,7 +88,7 @@ public class DBConnection {
             try {
                 if (!conn.isClosed()) {
                     conn.close();
-                    System.out.println("🔌 Connection closed");
+                    System.out.println("[DBConnection] Connection closed");
                 }
             } catch (SQLException e) {
                 System.err.println("[DBConnection] Error closing connection: " + e.getMessage());
@@ -73,79 +97,11 @@ public class DBConnection {
     }
 
     public static boolean testConnection() {
-        System.out.println("🧪 Testing database connection...");
         try (Connection conn = getConnection()) {
-            if (conn != null && !conn.isClosed()) {
-                // Test dengan query simple
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("SELECT 1");
-                if (rs.next()) {
-                    System.out.println("✅ Test connection SUCCESS - Database is responsive");
-                }
-                rs.close();
-                stmt.close();
-                return true;
-            }
-            return false;
+            return conn != null && !conn.isClosed();
         } catch (SQLException e) {
-            System.err.println("❌ Test connection FAILED: " + e.getMessage());
+            System.err.println("[DBConnection] Test failed: " + e.getMessage());
             return false;
-        }
-    }
-
-    // Test connection dengan lebih detail
-    public static void testConnectionDetails() {
-        System.out.println("🧪=== DATABASE CONNECTION TEST ===");
-
-        String[] testUrls = {
-            "jdbc:postgresql://skylight-studio-db.flycast:5432/skylight_studio",
-            "jdbc:postgresql://skylight-studio-db.internal:5432/skylight_studio",
-            "jdbc:postgresql://skylight-studio-db.flycast:5432/postgres",
-            "jdbc:postgresql://skylight-studio-db.internal:5432/postgres"
-        };
-
-        String username = "skylight_studio";
-        String password = "AbxXCf8wR9KExwD";
-
-        for (String url : testUrls) {
-            System.out.println("\n🔍 Testing URL: " + url);
-
-            try {
-                Properties props = new Properties();
-                props.setProperty("user", username);
-                props.setProperty("password", password);
-                props.setProperty("ssl", "false");
-                props.setProperty("sslmode", "disable");
-
-                Connection conn = DriverManager.getConnection(url, props);
-                System.out.println("✅ Connected successfully!");
-                System.out.println("   Database: " + conn.getCatalog());
-                System.out.println("   Product: " + conn.getMetaData().getDatabaseProductName());
-
-                // Test query
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM admin");
-                if (rs.next()) {
-                    System.out.println("   Admin count: " + rs.getInt(1));
-                }
-
-                rs.close();
-                stmt.close();
-                conn.close();
-
-            } catch (SQLException e) {
-                System.out.println("❌ Failed: " + e.getMessage());
-            }
-        }
-        System.out.println("=== TEST COMPLETE ===");
-    }
-
-    // Quick test untuk servlet/jsp
-    public static String getConnectionStatus() {
-        if (testConnection()) {
-            return "✅ Database connection is ACTIVE";
-        } else {
-            return "❌ Database connection FAILED";
         }
     }
 }
