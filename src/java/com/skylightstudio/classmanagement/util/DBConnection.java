@@ -1,85 +1,90 @@
 package com.skylightstudio.classmanagement.util;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.net.URI;
+import java.sql.*;
+import java.util.Properties;
 
 public class DBConnection {
 
     static {
         try {
             Class.forName("org.postgresql.Driver");
-            System.out.println("[DBConnection] PostgreSQL JDBC Driver loaded successfully");
+            System.out.println("✅ PostgreSQL Driver Loaded");
         } catch (ClassNotFoundException e) {
-            System.err.println("[DBConnection] ERROR: PostgreSQL driver not found");
-            throw new RuntimeException("PostgreSQL JDBC Driver not found", e);
+            throw new RuntimeException("Driver not found", e);
         }
     }
 
     public static Connection getConnection() throws SQLException {
-        System.out.println("[DBConnection] Creating new connection...");
+        // Baca dari environment variables
+        String dbHost = System.getenv("DB_HOST");
+        String dbPort = System.getenv("DB_PORT");
+        String dbName = System.getenv("DB_NAME");
+        String username = System.getenv("DB_USER");
+        String password = System.getenv("DB_PASSWORD");
 
-        String dbUrl;
-        String dbUser;
-        String dbPassword;
-
-        // Get DATABASE_URL from environment
-        String databaseUrl = System.getenv("DATABASE_URL");
-
-        if (databaseUrl != null && !databaseUrl.isEmpty()) {
-            // Parse Fly.io DATABASE_URL format: postgres://user:password@host:port/database
-            try {
-                // Replace postgres:// with postgresql:// for JDBC compatibility
-                if (databaseUrl.startsWith("postgres://")) {
-                    databaseUrl = databaseUrl.replace("postgres://", "postgresql://");
-                }
-
-                URI dbUri = new URI(databaseUrl);
-                String userInfo = dbUri.getUserInfo();
-
-                if (userInfo != null) {
-                    String[] credentials = userInfo.split(":");
-                    dbUser = credentials[0];
-                    dbPassword = credentials.length > 1 ? credentials[1] : "";
-                } else {
-                    dbUser = "postgres";
-                    dbPassword = "";
-                }
-
-                // Build JDBC URL
-                dbUrl = "jdbc:postgresql://" + dbUri.getHost() + ":" + dbUri.getPort() + dbUri.getPath();
-
-                System.out.println("[DBConnection] Using Fly.io DATABASE_URL");
-                System.out.println("[DBConnection] Host: " + dbUri.getHost());
-                System.out.println("[DBConnection] Port: " + dbUri.getPort());
-                System.out.println("[DBConnection] Database: " + dbUri.getPath());
-                System.out.println("[DBConnection] User: " + dbUser);
-
-            } catch (Exception e) {
-                System.err.println("[DBConnection] Error parsing DATABASE_URL: " + e.getMessage());
-                e.printStackTrace();
-                throw new SQLException("Failed to parse DATABASE_URL", e);
+        // Fallback ke DATABASE_URL kalau secrets tak set
+        if (dbHost == null || username == null) {
+            String databaseUrl = System.getenv("DATABASE_URL");
+            if (databaseUrl != null) {
+                return getConnectionFromUrl(databaseUrl);
             }
-        } else {
-            // Local development fallback
-            dbUrl = "jdbc:postgresql://localhost:5432/skylightstudio";
-            dbUser = "postgres";
-            dbPassword = "postgres";
-            System.out.println("[DBConnection] Using local PostgreSQL");
+            throw new SQLException("No database configuration found!");
         }
 
+        String jdbcUrl = String.format("jdbc:postgresql://%s:%s/%s",
+                dbHost, dbPort, dbName);
+
+        System.out.println("🔗 Connecting to: " + jdbcUrl);
+        System.out.println("👤 User: " + username);
+
+        Properties props = new Properties();
+        props.setProperty("user", username);
+        props.setProperty("password", password);
+        props.setProperty("ssl", "false");
+        props.setProperty("sslmode", "disable");
+
         try {
-            Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
-            System.out.println("[DBConnection] Connection created successfully");
-            System.out.println("[DBConnection] Database: " + conn.getMetaData().getDatabaseProductName());
+            Connection conn = DriverManager.getConnection(jdbcUrl, props);
+            System.out.println("✅ CONNECTION SUCCESS!");
             return conn;
         } catch (SQLException e) {
-            System.err.println("[DBConnection] Error creating connection: " + e.getMessage());
-            System.err.println("[DBConnection] JDBC URL: " + dbUrl);
-            System.err.println("[DBConnection] User: " + dbUser);
-            e.printStackTrace();
+            System.err.println("❌ CONNECTION FAILED: " + e.getMessage());
             throw e;
+        }
+    }
+
+    // Backup method: Parse DATABASE_URL
+    private static Connection getConnectionFromUrl(String databaseUrl) throws SQLException {
+        try {
+            System.out.println("🔄 Parsing DATABASE_URL...");
+
+            // Remove postgres:// and split
+            String cleanUrl = databaseUrl.replace("postgres://", "");
+
+            // Format: user:password@host:port/database?params
+            String[] parts = cleanUrl.split("@");
+            String[] credentials = parts[0].split(":");
+            String username = credentials[0];
+            String password = credentials[1];
+
+            String[] hostParts = parts[1].split("/");
+            String hostAndPort = hostParts[0];
+            String[] dbParts = hostParts[1].split("\\?");
+            String dbName = dbParts[0];
+
+            String jdbcUrl = "jdbc:postgresql://" + hostAndPort + "/" + dbName;
+
+            System.out.println("🔗 Parsed URL: " + jdbcUrl);
+
+            Properties props = new Properties();
+            props.setProperty("user", username);
+            props.setProperty("password", password);
+            props.setProperty("ssl", "false");
+
+            return DriverManager.getConnection(jdbcUrl, props);
+
+        } catch (Exception e) {
+            throw new SQLException("Failed to parse DATABASE_URL", e);
         }
     }
 
@@ -88,20 +93,11 @@ public class DBConnection {
             try {
                 if (!conn.isClosed()) {
                     conn.close();
-                    System.out.println("[DBConnection] Connection closed");
+                    System.out.println("🔌 Connection closed");
                 }
             } catch (SQLException e) {
-                System.err.println("[DBConnection] Error closing connection: " + e.getMessage());
+                System.err.println("Error closing connection: " + e.getMessage());
             }
-        }
-    }
-
-    public static boolean testConnection() {
-        try (Connection conn = getConnection()) {
-            return conn != null && !conn.isClosed();
-        } catch (SQLException e) {
-            System.err.println("[DBConnection] Test failed: " + e.getMessage());
-            return false;
         }
     }
 }
